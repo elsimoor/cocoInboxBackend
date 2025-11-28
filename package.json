@@ -1,0 +1,45 @@
+{
+  "name": "cocoinbox-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon --exec  ts-node src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@mailchimp/mailchimp_marketing": "3.0.80",
+    "@types/mongodb": "^4.0.7",
+    "axios": "^1.4.0",
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "firebase-admin": "^12.6.0",
+    "graphql": "^16.6.0",
+    "imap-simple": "^5.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "mailparser": "^3.7.4",
+    "mongodb": "^6.20.0",
+    "mongoose": "^8.0.0",
+    "nodemailer": "^6.9.4",
+    "nodemon": "^3.1.10",
+    "react-mailbox": "^1.0.2",
+    "stripe": "^12.18.0",
+    "twilio": "^4.22.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/mailchimp__mailchimp_marketing": "^3.0.21",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^20.0.0",
+    "@types/nodemailer": "^7.0.2",
+    "@types/uuid": "^9.0.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

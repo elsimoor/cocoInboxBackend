@@ -1,0 +1,75 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const mailService_1 = require("../services/mailService");
+const SentEmail_1 = __importDefault(require("../models/SentEmail"));
+const auth_1 = require("../middleware/auth");
+// Routes for sending and receiving email through external services. Free users
+// send via SMTP/smtp.dev and premium users send via Mailchimp. Inbox
+// retrieval is implemented for free users via smtp.dev API; premium inbound
+// email is not implemented.
+const router = (0, express_1.Router)();
+const mailService = new mailService_1.MailService();
+// Send an email on behalf of the authenticated user. Requires the user to be
+// authenticated via JWT (middleware/auth). Body should include `to` and
+// `subject` fields, and optionally `text` and `html`.
+router.post('/send', auth_1.authenticate, async (req, res) => {
+    try {
+        const { to, subject, text, html } = req.body;
+        if (!to || !subject) {
+            return res.status(400).json({ error: 'Recipient and subject are required' });
+        }
+        // The authenticate middleware attaches the decoded user object to req.user
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const result = await mailService.sendEmail(user, { to, subject, text, html });
+        try {
+            const fromEmail = process.env.SENDER_EMAIL || 'no-reply@temmail.me';
+            await SentEmail_1.default.create({ user_id: user.id, from: fromEmail, to, subject, text, html });
+        }
+        catch (persistErr) {
+            console.error('Failed to persist sent email:', persistErr);
+        }
+        return res.json({ success: true, result });
+    }
+    catch (error) {
+        console.error('Error sending email:', error);
+        return res.status(500).json({ error: error.message || 'Failed to send email' });
+    }
+});
+// Retrieve inbox messages for the authenticated user. Only implemented for
+// free tier via smtp.dev. The returned array contains message metadata.
+router.get('/inbox', auth_1.authenticate, async (req, res) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const messages = await mailService.receiveEmails(user);
+        return res.json(messages);
+    }
+    catch (error) {
+        console.error('Error fetching inbox messages:', error);
+        return res.status(500).json({ error: error.message || 'Failed to fetch messages' });
+    }
+});
+// List sent emails by the authenticated user
+router.get('/sent', auth_1.authenticate, async (req, res) => {
+    try {
+        const user = req.user;
+        if (!user)
+            return res.status(401).json({ error: 'Unauthorized' });
+        const items = await SentEmail_1.default.find({ user_id: user.id }).sort({ sent_at: -1 }).lean();
+        return res.json(items);
+    }
+    catch (e) {
+        console.error('Error fetching sent emails:', e);
+        return res.status(500).json({ error: e.message || 'Failed to fetch sent emails' });
+    }
+});
+exports.default = router;
