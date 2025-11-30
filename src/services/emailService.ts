@@ -137,15 +137,41 @@ export class EmailService {
     }
   }
 
-  async getEmailThread(emailId: string, userId: string) {
+  async getEmailThread(
+    emailId: string,
+    userId: string,
+    options?: {
+      inboundPage?: number;
+      inboundLimit?: number;
+      sentPage?: number;
+      sentLimit?: number;
+    }
+  ) {
     try {
       await connectToDatabase();
       const emailDoc = await EphemeralEmail.findOne({ _id: emailId, user_id: userId, is_active: true });
       if (!emailDoc) {
         return null;
       }
-      const inboundMessages = await InboundEmail.find({ email_id: emailId }).sort({ received_at: -1 }).lean();
-      const sentMessages = await SentEmail.find({ email_id: emailId }).sort({ sent_at: -1 }).lean();
+      const inboundPage = Math.max(1, options?.inboundPage || 1);
+      const inboundLimit = Math.min(50, Math.max(1, options?.inboundLimit || 10));
+      const sentPage = Math.max(1, options?.sentPage || 1);
+      const sentLimit = Math.min(50, Math.max(1, options?.sentLimit || 10));
+
+      const [inboundTotal, sentTotal, inboundMessages, sentMessages] = await Promise.all([
+        InboundEmail.countDocuments({ email_id: emailId }),
+        SentEmail.countDocuments({ email_id: emailId }),
+        InboundEmail.find({ email_id: emailId })
+          .sort({ received_at: -1 })
+          .skip((inboundPage - 1) * inboundLimit)
+          .limit(inboundLimit)
+          .lean(),
+        SentEmail.find({ email_id: emailId })
+          .sort({ sent_at: -1 })
+          .skip((sentPage - 1) * sentLimit)
+          .limit(sentLimit)
+          .lean(),
+      ]);
       const emailObject = emailDoc.toObject();
       const { _id, __v, ...emailFields } = emailObject;
       return {
@@ -158,6 +184,14 @@ export class EmailService {
           const { _id: sentId, __v: sentV, ...rest } = msg;
           return { id: sentId.toString(), ...rest };
         }),
+        meta: {
+          inboundPage,
+          inboundLimit,
+          inboundTotal,
+          sentPage,
+          sentLimit,
+          sentTotal,
+        },
       };
     } catch (error) {
       console.error('Error fetching email thread:', error);

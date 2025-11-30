@@ -139,15 +139,31 @@ class EmailService {
             return [];
         }
     }
-    async getEmailThread(emailId, userId) {
+    async getEmailThread(emailId, userId, options) {
         try {
             await (0, db_1.connectToDatabase)();
             const emailDoc = await EphemeralEmail_1.default.findOne({ _id: emailId, user_id: userId, is_active: true });
             if (!emailDoc) {
                 return null;
             }
-            const inboundMessages = await InboundEmail_1.default.find({ email_id: emailId }).sort({ received_at: -1 }).lean();
-            const sentMessages = await SentEmail_1.default.find({ email_id: emailId }).sort({ sent_at: -1 }).lean();
+            const inboundPage = Math.max(1, options?.inboundPage || 1);
+            const inboundLimit = Math.min(50, Math.max(1, options?.inboundLimit || 10));
+            const sentPage = Math.max(1, options?.sentPage || 1);
+            const sentLimit = Math.min(50, Math.max(1, options?.sentLimit || 10));
+            const [inboundTotal, sentTotal, inboundMessages, sentMessages] = await Promise.all([
+                InboundEmail_1.default.countDocuments({ email_id: emailId }),
+                SentEmail_1.default.countDocuments({ email_id: emailId }),
+                InboundEmail_1.default.find({ email_id: emailId })
+                    .sort({ received_at: -1 })
+                    .skip((inboundPage - 1) * inboundLimit)
+                    .limit(inboundLimit)
+                    .lean(),
+                SentEmail_1.default.find({ email_id: emailId })
+                    .sort({ sent_at: -1 })
+                    .skip((sentPage - 1) * sentLimit)
+                    .limit(sentLimit)
+                    .lean(),
+            ]);
             const emailObject = emailDoc.toObject();
             const { _id, __v, ...emailFields } = emailObject;
             return {
@@ -160,6 +176,14 @@ class EmailService {
                     const { _id: sentId, __v: sentV, ...rest } = msg;
                     return { id: sentId.toString(), ...rest };
                 }),
+                meta: {
+                    inboundPage,
+                    inboundLimit,
+                    inboundTotal,
+                    sentPage,
+                    sentLimit,
+                    sentTotal,
+                },
             };
         }
         catch (error) {

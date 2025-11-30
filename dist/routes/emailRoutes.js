@@ -51,7 +51,16 @@ router.get('/:emailId/messages', async (req, res) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
         const { emailId } = req.params;
-        const thread = await emailService.getEmailThread(emailId, authReq.user.id);
+        const inboundPage = Number(req.query.inboundPage) || 1;
+        const inboundLimit = Number(req.query.inboundLimit) || 10;
+        const sentPage = Number(req.query.sentPage) || 1;
+        const sentLimit = Number(req.query.sentLimit) || 10;
+        const thread = await emailService.getEmailThread(emailId, authReq.user.id, {
+            inboundPage,
+            inboundLimit,
+            sentPage,
+            sentLimit,
+        });
         if (!thread) {
             return res.status(404).json({ error: 'Email not found' });
         }
