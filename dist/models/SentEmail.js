@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const sentEmailSchema = new mongoose_1.Schema({
     user_id: { type: String, required: true },
+    email_id: { type: String },
     from: { type: String, required: true },
     to: { type: String, required: true },
     subject: { type: String, required: true },

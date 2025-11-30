@@ -6,6 +6,8 @@ export interface EphemeralEmail {
   expires_at: string;
   is_active: boolean;
   created_at: string;
+  provider?: 'freemium' | 'mailchimp';
+  provider_metadata?: Record<string, any> | null;
 }
 
 export interface SecureNote {

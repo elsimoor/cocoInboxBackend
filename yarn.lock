@@ -655,6 +655,13 @@
     dotenv "^8.2.0"
     superagent "3.8.1"
 
+"@mailchimp/mailchimp_transactional@^1.1.2":
+  version "1.1.2"
+  resolved "https://registry.npmjs.org/@mailchimp/mailchimp_transactional/-/mailchimp_transactional-1.1.2.tgz"
+  integrity sha512-F2sJcTjlaszW6KofGSoKonGbBKOAuqQ5u19bUzvF9+AIOG4WrLdHYh4KYQl0YuBlPn5HnLvRkfJdfTRolvrwHg==
+  dependencies:
+    axios "^1.7.7"
+
 "@mapbox/node-pre-gyp@^1.0.11":
   version "1.0.11"
   resolved "https://registry.npmjs.org/@mapbox/node-pre-gyp/-/node-pre-gyp-1.0.11.tgz"
@@ -1248,6 +1255,13 @@
   resolved "https://registry.npmjs.org/@types/mailchimp__mailchimp_marketing/-/mailchimp__mailchimp_marketing-3.0.21.tgz"
   integrity sha512-AxwxDB69Sc/aHNiB7GWtnlaKy9j1eNoVhNFODLqM/ahzIyGd+UM+843bBJ7Nb5yA7TC427bqOznF6a3J3TAdPw==
 
+"@types/mailchimp__mailchimp_transactional@^1.0.11":
+  version "1.0.11"
+  resolved "https://registry.yarnpkg.com/@types/mailchimp__mailchimp_transactional/-/mailchimp__mailchimp_transactional-1.0.11.tgz#c5564640c98e7f3504f2434ffbd91c7782fc2234"
+  integrity sha512-xUWPWzLEkx4lTJiEvH6r0fjgNI5sh6WWHl9deMNrfnwjS/GAa1wj0cR/odnuHlVPwdSVGq+xLTkDI9mm+dX58Q==
+  dependencies:
+    axios "^1.8.2"
+
 "@types/mailparser@^3.4.6":
   version "3.4.6"
   resolved "https://registry.npmjs.org/@types/mailparser/-/mailparser-3.4.6.tgz"
@@ -1465,10 +1479,19 @@ asynckit@^0.4.0:
   resolved "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz"
   integrity sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==
 
-axios@^1.4.0, axios@^1.6.0:
+axios@^1.4.0, axios@^1.6.0, axios@^1.7.7:
   version "1.12.2"
   resolved "https://registry.npmjs.org/axios/-/axios-1.12.2.tgz"
   integrity sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==
+  dependencies:
+    follow-redirects "^1.15.6"
+    form-data "^4.0.4"
+    proxy-from-env "^1.1.0"
+
+axios@^1.8.2:
+  version "1.13.2"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.13.2.tgz#9ada120b7b5ab24509553ec3e40123521117f687"
+  integrity sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.4"

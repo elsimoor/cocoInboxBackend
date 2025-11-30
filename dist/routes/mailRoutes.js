@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const mailService_1 = require("../services/mailService");
 const SentEmail_1 = __importDefault(require("../models/SentEmail"));
+const EphemeralEmail_1 = __importDefault(require("../models/EphemeralEmail"));
 const auth_1 = require("../middleware/auth");
 // Routes for sending and receiving email through external services. Free users
 // send via SMTP/smtp.dev and premium users send via Mailchimp. Inbox
@@ -18,7 +19,7 @@ const mailService = new mailService_1.MailService();
 // `subject` fields, and optionally `text` and `html`.
 router.post('/send', auth_1.authenticate, async (req, res) => {
     try {
-        const { to, subject, text, html } = req.body;
+        const { to, subject, text, html, fromEmailId } = req.body;
         if (!to || !subject) {
             return res.status(400).json({ error: 'Recipient and subject are required' });
         }
@@ -27,10 +28,19 @@ router.post('/send', auth_1.authenticate, async (req, res) => {
         if (!user) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        const result = await mailService.sendEmail(user, { to, subject, text, html });
+        let fromEmail = process.env.SENDER_EMAIL || 'no-reply@temmail.me';
+        let emailId;
+        if (fromEmailId) {
+            const emailDoc = await EphemeralEmail_1.default.findOne({ _id: fromEmailId, user_id: user.id, is_active: true });
+            if (!emailDoc) {
+                return res.status(400).json({ error: 'Invalid from email' });
+            }
+            fromEmail = emailDoc.email_address;
+            emailId = emailDoc.id;
+        }
+        const result = await mailService.sendEmail(user, { to, subject, text, html, from: fromEmail });
         try {
-            const fromEmail = process.env.SENDER_EMAIL || 'no-reply@temmail.me';
-            await SentEmail_1.default.create({ user_id: user.id, from: fromEmail, to, subject, text, html });
+            await SentEmail_1.default.create({ user_id: user.id, from: fromEmail, to, subject, text, html, email_id: emailId });
         }
         catch (persistErr) {
             console.error('Failed to persist sent email:', persistErr);

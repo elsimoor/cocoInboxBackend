@@ -65,6 +65,8 @@ async function start() {
     app.use('/api/files', auth_1.authenticate, requirePro_1.requirePro, fileRoutes_1.default);
     app.use('/api/auth', authRoutes_1.default);
     app.use('/api/mail', mailRoutes_1.default);
+    const mailchimpInboundRoutes = (await Promise.resolve().then(() => __importStar(require('./routes/mailchimpInboundRoutes')))).default;
+    app.use('/api/mailchimp', mailchimpInboundRoutes);
     const smsRoutes = (await Promise.resolve().then(() => __importStar(require('./routes/smsRoutes')))).default;
     app.use('/api/sms', auth_1.authenticate, requirePro_1.requirePro, smsRoutes);
     const esimRoutes = (await Promise.resolve().then(() => __importStar(require('./routes/esimRoutes')))).default;

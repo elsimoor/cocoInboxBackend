@@ -33,6 +33,8 @@ async function start() {
   app.use('/api/files', authenticate, requirePro, fileRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/mail', mailRoutes);
+  const mailchimpInboundRoutes = (await import('./routes/mailchimpInboundRoutes')).default;
+  app.use('/api/mailchimp', mailchimpInboundRoutes);
   const smsRoutes = (await import('./routes/smsRoutes')).default;
   app.use('/api/sms', authenticate, requirePro, smsRoutes);
   const esimRoutes = (await import('./routes/esimRoutes')).default;

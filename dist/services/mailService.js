@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MailService = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
-const mailchimp_marketing_1 = __importDefault(require("@mailchimp/mailchimp_marketing"));
+const mailchimp_transactional_1 = __importDefault(require("@mailchimp/mailchimp_transactional"));
 const axios_1 = __importDefault(require("axios"));
 const domainService_1 = require("./domainService");
 // Import IMAP client and mail parser for receiving emails via IMAP. These
@@ -32,14 +32,12 @@ const EphemeralEmail_1 = __importDefault(require("../models/EphemeralEmail"));
  */
 class MailService {
     constructor() {
+        this.mailchimpClient = null;
         // Configure Mailchimp client on construction. Only runs once.
         const mailchimpApiKey = process.env.MAILCHIMP_API_KEY;
         const mailchimpServerPrefix = process.env.MAILCHIMP_SERVER_PREFIX;
         if (mailchimpApiKey && mailchimpServerPrefix) {
-            mailchimp_marketing_1.default.setConfig({
-                apiKey: mailchimpApiKey,
-                server: mailchimpServerPrefix,
-            });
+            this.mailchimpClient = (0, mailchimp_transactional_1.default)(mailchimpApiKey);
         }
         // Instantiate a DomainService to manage free tier domain rotation. This
         // service handles retrieving domains from MongoDB and tracking
@@ -54,18 +52,17 @@ class MailService {
      * @param message Email message parameters including to, subject, text and html.
      */
     async sendEmail(user, message) {
-        const { to, subject, text, html } = message;
+        const { to, subject, text, html, from } = message;
         // Determine if user is pro. If roles array contains 'pro', use Mailchimp.
         const isPro = Array.isArray(user.roles) && user.roles.includes('pro');
         if (isPro) {
             // Premium: use Mailchimp Transactional API to send email
-            if (!process.env.MAILCHIMP_API_KEY || !process.env.MAILCHIMP_SERVER_PREFIX) {
-                throw new Error('Mailchimp API key and server prefix must be provided for premium email sending');
+            if (!this.mailchimpClient) {
+                throw new Error('Mailchimp transactional client is not configured');
             }
             // Default to a verified sender on our Brevo domain when SENDER_EMAIL is not set.
-            const fromEmail = process.env.SENDER_EMAIL || 'no-reply@temmail.me';
-            // @ts-ignore
-            const response = await mailchimp_marketing_1.default.messages.send({
+            const fromEmail = from || process.env.SENDER_EMAIL || 'no-reply@temmail.me';
+            const response = await this.mailchimpClient.messages.send({
                 message: {
                     from_email: fromEmail,
                     subject,
@@ -96,7 +93,7 @@ class MailService {
                     },
                 });
                 const info = await transporter.sendMail({
-                    from: domain.from,
+                    from: from || domain.from,
                     to,
                     subject,
                     text: text || undefined,
@@ -119,7 +116,7 @@ class MailService {
         const smtpUser = process.env.SMTP_USERNAME;
         const smtpPass = process.env.SMTP_PASSWORD;
         // Use the configured sender email or fall back to our Brevo domain address.
-        const fromEmail = process.env.SENDER_EMAIL || 'no-reply@temmail.me';
+        const fromEmail = from || process.env.SENDER_EMAIL || 'no-reply@temmail.me';
         if (smtpHost && smtpPort && smtpUser && smtpPass) {
             const transporter = nodemailer_1.default.createTransport({
                 host: smtpHost,

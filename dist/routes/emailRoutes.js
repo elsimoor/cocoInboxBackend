@@ -44,4 +44,22 @@ router.delete('/:emailId', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+router.get('/:emailId/messages', async (req, res) => {
+    try {
+        const authReq = req;
+        if (!authReq.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const { emailId } = req.params;
+        const thread = await emailService.getEmailThread(emailId, authReq.user.id);
+        if (!thread) {
+            return res.status(404).json({ error: 'Email not found' });
+        }
+        res.json(thread);
+    }
+    catch (error) {
+        console.error('Error fetching email messages:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 exports.default = router;
