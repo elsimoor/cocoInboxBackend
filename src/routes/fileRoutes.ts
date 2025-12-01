@@ -8,6 +8,70 @@ const router = Router();
 const fileService = new FileService();
 const storageService = new StorageService();
 
+// NOTE: Public endpoints must be declared BEFORE auth middleware is applied
+// so that shared links work without Authorization headers.
+
+// Public: fetch file metadata (password-validated) without auth
+router.get('/:fileId', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { password } = req.query;
+    const file = await fileService.getFile(fileId, password as string);
+
+    if (!file) {
+      return res.status(404).json({ error: 'File not found or invalid password' });
+    }
+
+    res.json(file);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Public: get short-lived signed download URL after validating password/expiry
+router.get('/:fileId/download-url', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { password } = req.query;
+    const file = await fileService.getFile(fileId, (password as string) || undefined);
+    if (!file) {
+      return res.status(404).json({ error: 'File not available' });
+    }
+    const url = await storageService.getDownloadUrl(file.storage_path, 60);
+    // best-effort increment
+    try { await fileService.incrementDownloadCount(fileId); } catch {}
+    return res.json({
+      url,
+      filename: file.filename,
+      mimeType: file.original_mime_type || 'application/octet-stream',
+      iv: file.iv,
+      salt: file.salt,
+      algo: file.algo,
+      kdfIterations: file.kdf_iterations,
+    });
+  } catch (error) {
+    console.error('download-url error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Public: increment download counter (best-effort)
+router.post('/:fileId/download', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const success = await fileService.incrementDownloadCount(fileId);
+
+    if (!success) {
+      return res.status(500).json({ error: 'Failed to update download count' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Apply auth for all routes below (creator-only operations)
 router.use(authenticate, requirePro);
 
 // Create a signed upload URL for direct-to-Firebase upload
@@ -87,63 +151,6 @@ router.get('/user/:userId', async (req: AuthRequest, res) => {
   }
 });
 
-router.get('/:fileId', async (req, res) => {
-  try {
-    const { fileId } = req.params;
-    const { password } = req.query;
-    const file = await fileService.getFile(fileId, password as string);
-
-    if (!file) {
-      return res.status(404).json({ error: 'File not found or invalid password' });
-    }
-
-    res.json(file);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get a short-lived signed download URL after validating password/expiry
-router.get('/:fileId/download-url', async (req, res) => {
-  try {
-    const { fileId } = req.params;
-    const { password } = req.query;
-    const file = await fileService.getFile(fileId, (password as string) || undefined);
-    if (!file) {
-      return res.status(404).json({ error: 'File not available' });
-    }
-    const url = await storageService.getDownloadUrl(file.storage_path, 60);
-    // best-effort increment
-    try { await fileService.incrementDownloadCount(fileId); } catch {}
-    return res.json({
-      url,
-      filename: file.filename,
-      mimeType: file.original_mime_type || 'application/octet-stream',
-      iv: file.iv,
-      salt: file.salt,
-      algo: file.algo,
-      kdfIterations: file.kdf_iterations,
-    });
-  } catch (error) {
-    console.error('download-url error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-router.post('/:fileId/download', async (req, res) => {
-  try {
-    const { fileId } = req.params;
-    const success = await fileService.incrementDownloadCount(fileId);
-
-    if (!success) {
-      return res.status(500).json({ error: 'Failed to update download count' });
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 router.delete('/:fileId', async (req: AuthRequest, res) => {
   try {

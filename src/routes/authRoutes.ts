@@ -4,6 +4,14 @@ import { connectToDatabase } from '../db';
 import { createHmac } from 'crypto';
 import dotenv from 'dotenv';
 import User from '../models/User';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import EphemeralEmail from '../models/EphemeralEmail';
+import SentEmail from '../models/SentEmail';
+import InboundEmail from '../models/InboundEmail';
+import SecureFile from '../models/SecureFile';
+import SecureNote from '../models/SecureNote';
+import TempPhoneNumber from '../models/TempPhoneNumber';
+import SmsMessage from '../models/SmsMessage';
 
 // Load environment variables early so that JWT_SECRET is available when
 // this module is evaluated. Without calling dotenv.config() here,
@@ -168,6 +176,27 @@ router.get('/me', async (req, res) => {
   } catch (err) {
     console.error('Error fetching current user:', err);
     return res.status(500).json({ error: 'Failed to get current user' });
+  }
+});
+
+router.delete('/me', authenticate, async (req: AuthRequest, res) => {
+  try {
+    await connectToDatabase();
+    const userId = req.user!.id;
+    await Promise.all([
+      EphemeralEmail.deleteMany({ user_id: userId }),
+      SentEmail.deleteMany({ user_id: userId }),
+      InboundEmail.deleteMany({ user_id: userId }),
+      SecureFile.deleteMany({ user_id: userId }),
+      SecureNote.deleteMany({ user_id: userId }),
+      TempPhoneNumber.deleteMany({ user_id: userId }),
+      SmsMessage.deleteMany({ user_id: userId }),
+    ]);
+    await User.findByIdAndDelete(userId);
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting account:', err);
+    return res.status(500).json({ error: 'Failed to delete account' });
   }
 });
 

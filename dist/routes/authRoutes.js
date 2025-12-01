@@ -9,6 +9,14 @@ const db_1 = require("../db");
 const crypto_1 = require("crypto");
 const dotenv_1 = __importDefault(require("dotenv"));
 const User_1 = __importDefault(require("../models/User"));
+const auth_1 = require("../middleware/auth");
+const EphemeralEmail_1 = __importDefault(require("../models/EphemeralEmail"));
+const SentEmail_1 = __importDefault(require("../models/SentEmail"));
+const InboundEmail_1 = __importDefault(require("../models/InboundEmail"));
+const SecureFile_1 = __importDefault(require("../models/SecureFile"));
+const SecureNote_1 = __importDefault(require("../models/SecureNote"));
+const TempPhoneNumber_1 = __importDefault(require("../models/TempPhoneNumber"));
+const SmsMessage_1 = __importDefault(require("../models/SmsMessage"));
 // Load environment variables early so that JWT_SECRET is available when
 // this module is evaluated. Without calling dotenv.config() here,
 // process.env.JWT_SECRET may be undefined because index.ts calls
@@ -171,6 +179,27 @@ router.get('/me', async (req, res) => {
     catch (err) {
         console.error('Error fetching current user:', err);
         return res.status(500).json({ error: 'Failed to get current user' });
+    }
+});
+router.delete('/me', auth_1.authenticate, async (req, res) => {
+    try {
+        await (0, db_1.connectToDatabase)();
+        const userId = req.user.id;
+        await Promise.all([
+            EphemeralEmail_1.default.deleteMany({ user_id: userId }),
+            SentEmail_1.default.deleteMany({ user_id: userId }),
+            InboundEmail_1.default.deleteMany({ user_id: userId }),
+            SecureFile_1.default.deleteMany({ user_id: userId }),
+            SecureNote_1.default.deleteMany({ user_id: userId }),
+            TempPhoneNumber_1.default.deleteMany({ user_id: userId }),
+            SmsMessage_1.default.deleteMany({ user_id: userId }),
+        ]);
+        await User_1.default.findByIdAndDelete(userId);
+        return res.json({ success: true });
+    }
+    catch (err) {
+        console.error('Error deleting account:', err);
+        return res.status(500).json({ error: 'Failed to delete account' });
     }
 });
 exports.default = router;
