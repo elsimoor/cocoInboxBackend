@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import fetch from 'node-fetch';
+import axios from 'axios';
 import { FileService } from '../services/fileService';
 import { StorageService } from '../services/storageService';
 import { authenticate, AuthRequest } from '../middleware/auth';
@@ -66,16 +66,18 @@ router.get('/:fileId/blob', async (req, res) => {
       return res.status(404).json({ error: 'File not available' });
     }
     const url = await storageService.getDownloadUrl(file.storage_path, 60);
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      return res.status(502).json({ error: 'Failed to fetch blob' });
+    const resp = await axios.get(url, { responseType: 'stream', validateStatus: () => true });
+    if (resp.status < 200 || resp.status >= 300) {
+      return res.status(502).json({ error: 'Failed to fetch blob', status: resp.status });
     }
     res.setHeader('Content-Type', file.original_mime_type || 'application/octet-stream');
     res.setHeader('Cache-Control', 'no-store');
-    const reader = resp.body as any; // Node stream
-    reader.pipe(res);
-  } catch (error) {
-    console.error('blob proxy error:', error);
+    if (resp.headers['content-length']) {
+      res.setHeader('Content-Length', resp.headers['content-length']);
+    }
+    resp.data.pipe(res);
+  } catch (error: any) {
+    console.error('blob proxy error:', error?.message || error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

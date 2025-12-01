@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const node_fetch_1 = __importDefault(require("node-fetch"));
+const axios_1 = __importDefault(require("axios"));
 const fileService_1 = require("../services/fileService");
 const storageService_1 = require("../services/storageService");
 const auth_1 = require("../middleware/auth");
@@ -69,17 +69,19 @@ router.get('/:fileId/blob', async (req, res) => {
             return res.status(404).json({ error: 'File not available' });
         }
         const url = await storageService.getDownloadUrl(file.storage_path, 60);
-        const resp = await (0, node_fetch_1.default)(url);
-        if (!resp.ok) {
-            return res.status(502).json({ error: 'Failed to fetch blob' });
+        const resp = await axios_1.default.get(url, { responseType: 'stream', validateStatus: () => true });
+        if (resp.status < 200 || resp.status >= 300) {
+            return res.status(502).json({ error: 'Failed to fetch blob', status: resp.status });
         }
         res.setHeader('Content-Type', file.original_mime_type || 'application/octet-stream');
         res.setHeader('Cache-Control', 'no-store');
-        const reader = resp.body; // Node stream
-        reader.pipe(res);
+        if (resp.headers['content-length']) {
+            res.setHeader('Content-Length', resp.headers['content-length']);
+        }
+        resp.data.pipe(res);
     }
     catch (error) {
-        console.error('blob proxy error:', error);
+        console.error('blob proxy error:', error?.message || error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

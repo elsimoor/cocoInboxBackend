@@ -23,7 +23,6 @@
     "mailparser": "^3.7.4",
     "mongodb": "^6.20.0",
     "mongoose": "^8.0.0",
-    "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.4",
     "nodemon": "^3.1.10",
     "react-mailbox": "^1.0.2",
