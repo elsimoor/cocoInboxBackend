@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const node_fetch_1 = __importDefault(require("node-fetch"));
 const fileService_1 = require("../services/fileService");
 const storageService_1 = require("../services/storageService");
 const auth_1 = require("../middleware/auth");
@@ -52,6 +56,30 @@ router.get('/:fileId/download-url', async (req, res) => {
     }
     catch (error) {
         console.error('download-url error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// Public: proxy encrypted blob to avoid frontend CORS issues
+router.get('/:fileId/blob', async (req, res) => {
+    try {
+        const { fileId } = req.params;
+        const { password } = req.query;
+        const file = await fileService.getFile(fileId, password || undefined);
+        if (!file) {
+            return res.status(404).json({ error: 'File not available' });
+        }
+        const url = await storageService.getDownloadUrl(file.storage_path, 60);
+        const resp = await (0, node_fetch_1.default)(url);
+        if (!resp.ok) {
+            return res.status(502).json({ error: 'Failed to fetch blob' });
+        }
+        res.setHeader('Content-Type', file.original_mime_type || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'no-store');
+        const reader = resp.body; // Node stream
+        reader.pipe(res);
+    }
+    catch (error) {
+        console.error('blob proxy error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

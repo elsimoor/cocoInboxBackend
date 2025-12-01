@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import fetch from 'node-fetch';
 import { FileService } from '../services/fileService';
 import { StorageService } from '../services/storageService';
 import { authenticate, AuthRequest } from '../middleware/auth';
@@ -51,6 +52,30 @@ router.get('/:fileId/download-url', async (req, res) => {
     });
   } catch (error) {
     console.error('download-url error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Public: proxy encrypted blob to avoid frontend CORS issues
+router.get('/:fileId/blob', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const { password } = req.query;
+    const file = await fileService.getFile(fileId, (password as string) || undefined);
+    if (!file) {
+      return res.status(404).json({ error: 'File not available' });
+    }
+    const url = await storageService.getDownloadUrl(file.storage_path, 60);
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      return res.status(502).json({ error: 'Failed to fetch blob' });
+    }
+    res.setHeader('Content-Type', file.original_mime_type || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'no-store');
+    const reader = resp.body as any; // Node stream
+    reader.pipe(res);
+  } catch (error) {
+    console.error('blob proxy error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
