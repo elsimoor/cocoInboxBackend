@@ -38,14 +38,20 @@ router.get('/:fileId/download-url', async (req, res) => {
         if (!file) {
             return res.status(404).json({ error: 'File not available' });
         }
-        const url = await storageService.getDownloadUrl(file.storage_path, 60);
+        // Generate signed GCS URL (for non-browser clients)
+        const gcsUrl = await storageService.getDownloadUrl(file.storage_path, 60);
+        // Also provide a backend-proxied URL for browsers (avoids CORS)
+        const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+        const host = req.headers['x-forwarded-host'] || req.get('host');
+        const proxyUrl = `${proto}://${host}/api/files/${fileId}/blob?password=${encodeURIComponent(password || '')}`;
         // best-effort increment
         try {
             await fileService.incrementDownloadCount(fileId);
         }
         catch { }
         return res.json({
-            url,
+            url: proxyUrl,
+            gcsUrl,
             filename: file.filename,
             mimeType: file.original_mime_type || 'application/octet-stream',
             iv: file.iv,
