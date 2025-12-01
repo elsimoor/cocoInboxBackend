@@ -30,7 +30,9 @@ async function start() {
   // Pro-gated services
   app.use('/api/emails', authenticate, requirePro, emailRoutes);
   app.use('/api/notes', authenticate, requirePro, noteRoutes);
-  app.use('/api/files', authenticate, requirePro, fileRoutes);
+  // Files: mount without global auth. Route-level auth is applied inside fileRoutes
+  // to allow public shared links to work.
+  app.use('/api/files', fileRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/mail', mailRoutes);
   const mailchimpInboundRoutes = (await import('./routes/mailchimpInboundRoutes')).default;
